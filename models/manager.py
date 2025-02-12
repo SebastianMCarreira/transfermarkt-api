@@ -45,7 +45,7 @@ class Manager:
     def get_total_ppm(self):
         total_matches = self.get_total_matches()
         cummulative_points = sum([club['matches'] * club['ppm'] for club in self.clubs])
-        return cummulative_points / total_matches
+        return cummulative_points / total_matches if total_matches else None
     
     def get_total_matches(self):
         return sum([club['matches'] for club in self.clubs])
@@ -53,3 +53,16 @@ class Manager:
     def get_clubs(self):
         from models.interface import get_object
         return [get_object(club['club_url']) for club in self.clubs]
+
+class AvailableManagers:
+    def __init__(self):
+        from models.interface import CachedGet
+        self.html = CachedGet(f'https://{HOST}/trainer/verfuegbaretrainer/statistik').content
+        bs = BeautifulSoup(self.html)
+        self.managers = [
+            {
+                'manager': manager_row.find_all('td')[0].text.strip().split('\n')[0].strip(),
+                'manager_url': f'https://{HOST}'+manager_row.find_all('td')[0].find('a')['href']
+            }
+            for manager_row in bs.find('div', {'class': 'responsive-table'}).find('tbody').find_all('tr', recursive=False)[1:]
+        ]
