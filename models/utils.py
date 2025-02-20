@@ -1,4 +1,6 @@
 def parse_value(value_str):
+    if '?' in value_str:
+        return 0
     value_str = value_str.split()[0]
     value_str = value_str.replace('€','')
     value_str = value_str.replace('$','')
@@ -15,3 +17,16 @@ def parse_value(value_str):
     else:
         multiplier = 1
     return float(value_str) * multiplier
+
+
+def parse_name_id(url):
+    if 'http' in url:
+        url = url[10:]
+    return f'{url.split("/")[1]}_{url.split("/")[4]}'
+
+def is_special_club(text):
+    return (
+        'Retired' in text or 'Without Club' in text or
+        'Unknown' in text or 'Own Youth' in text or
+        'Career break' in text
+    )
