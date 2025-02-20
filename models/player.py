@@ -8,7 +8,7 @@ class Player:
         self.url_name = name_id.split('_')[0]
         self.id = name_id.split('_')[1]
         self.html = CachedGet(f'https://{HOST}/{self.url_name}/profil/spieler/{self.id}').content
-        bs = BeautifulSoup(self.html)
+        bs = BeautifulSoup(self.html, features="html.parser")
         self.name = bs.find('h1').text.strip()
         self.main_position = None if bs.find('dd', {'class':'detail-position__position'}) == None else bs.find('dd', {'class':'detail-position__position'}).text.strip()
         self.main_position_cat = None if not self.main_position else POSITIONS[self.main_position]
@@ -25,3 +25,9 @@ class Player:
             return self.manager
         else:
             return None
+
+
+class PlayerTransfer:
+    def __init__(self, transfer_row):
+        pass
+

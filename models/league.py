@@ -8,7 +8,7 @@ class League:
         self.url_name = name_code.split('_')[0]
         self.code = name_code.split('_')[1]
         self.html = CachedGet(f'https://{HOST}/{self.url_name}/startseite/wettbewerb/{self.code}').content
-        bs = BeautifulSoup(self.html)
+        bs = BeautifulSoup(self.html, features="html.parser")
         self.name = bs.find('h1').text.strip()
         self.current_clubs = [
             {
