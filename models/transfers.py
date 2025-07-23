@@ -17,8 +17,23 @@ class Transfer:
         self.fee = fee
         self.transfer_type = transfer_type
 
+    def pretty_fee(self):
+        suffix = ''
+        simplified = self.fee
+        if self.fee > 1_000_000:
+            suffix = 'm'
+            simplified = self.fee / 1_000_000
+        elif self.fee > 1_000:
+            suffix = 'k'
+            simplified = self.fee / 1_000
+        return f'{simplified}{suffix}'
+
+
     def __repr__(self):
-        return f'{self.player} ({self.origin} -> {self.destination}) ${self.fee}'
+        if self.date:
+            return f'{self.player} ({self.origin} -> {self.destination}) ${self.pretty_fee()} {self.date}'
+        else:
+            return f'{self.player} ({self.origin} -> {self.destination}) ${self.pretty_fee()} {self.window}'
 
 
 class ClubAllTransfers:
@@ -40,6 +55,7 @@ class ClubAllTransfers:
             else:
                 departures = []
             for arrival in arrivals:
+                window_kind = 'winter' if 'bg_blau_20' in arrival['class'] else 'summer'
                 if 'Loan fee:' in arrival.find_all('td')[3].text:
                     transfer_type = LOAN
                     transfer_value = parse_value(arrival.find_all('td')[3].text.split(':')[1])
@@ -64,12 +80,13 @@ class ClubAllTransfers:
                     origin,
                     self.name_id,
                     parse_name_id(arrival.find_all('td')[0].find('a')['href']),
-                    window_date,
+                    f'{window_date} {window_kind}',
                     None,
                     transfer_value,
                     transfer_type
                 ))
             for departure in departures:
+                window_kind = 'winter' if 'bg_blau_20' in departure['class'] else 'summer'
                 if 'Loan fee:' in departure.find_all('td')[3].text:
                     transfer_type = LOAN
                     transfer_value = parse_value(departure.find_all('td')[3].text.split(':')[1])
@@ -94,7 +111,7 @@ class ClubAllTransfers:
                     self.name_id,
                     destination,
                     parse_name_id(departure.find_all('td')[0].find('a')['href']),
-                    window_date,
+                    f'{window_date} {window_kind}',
                     None,
                     transfer_value,
                     transfer_type
