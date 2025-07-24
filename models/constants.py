@@ -22,6 +22,8 @@ CURRENT_CLUB = 'ausfallzeiten_k'
 TRANSFER_FLOWS_QUERY_PARAMS = "?saisonIdVon=1893&saisonIdBis=2024&zuab=ab&verein_id="
 ACADEMY_SUFFIXES = [
     "II", " B", " C", " D", " E", "Youth",
-    "U23",  "U22", "U21", "U20", "U19", "U18", "U17", "U16", "U15"
+    "ii",                         "jugend",
+    "U23",  "U22", "U21", "U20", "U19", "U18", "U17", "U16", "U15",
+    "u23",  "u22", "u21", "u20", "u19", "u18", "u17", "u16", "u15"
     ]
 ACADEMIES_JSON = 'academies.json'

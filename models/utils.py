@@ -1,3 +1,5 @@
+from models.constants import ACADEMY_SUFFIXES
+
 def parse_value(value_str):
     if '?' in value_str:
         return 0
@@ -24,9 +26,18 @@ def parse_name_id(url):
         url = url[10:]
     return f'{url.split("/")[1]}_{url.split("/")[4]}'
 
+
 def is_special_club(text):
     return (
         'Retired' in text or 'Without Club' in text or
         'Unknown' in text or 'Own Youth' in text or
         'Career break' in text
     )
+
+
+def has_academy_suffix(name):
+    if '_' in name:
+        name = name.split('_')[0]
+    return any([
+        name.endswith(suffix) for suffix in ACADEMY_SUFFIXES
+    ])
