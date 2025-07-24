@@ -72,6 +72,7 @@ class ClubTransferFlows:
 
     def find_senior_team(self, avoid = []):
         import json
+        # Check if senior test is already known in the ACADEMIES_JSON
         with open(ACADEMIES_JSON, 'r') as f:
             known_academies = json.load(f)
             if self.name_id in known_academies:
@@ -79,23 +80,22 @@ class ClubTransferFlows:
                     return known_academies[self.name_id]['academy_of']
                 elif 'academies' in known_academies[self.name_id]:
                     return None
-        avoid.append(self.id)
+        avoid.append(self.id) # Avoid own club in recursive calls, a club cannot be it's own senior
         bs = BeautifulSoup(self.html, features="html.parser")
         transfer_flow_rows = bs.find('table', {'class': 'items'}).find_all('tr')[1:]
         for row in transfer_flow_rows:
             url_name = row.find_all('td')[2].find('a')['href'].split('/')[1]
             id = row.find_all('td')[2].find('a')['href'].split('/')[4]
-            if id in avoid:
+            if id in avoid: # Skip if club already checked in this analysis
                 continue
             name_id = f'{url_name}_{id}'
-            # print(f'name_id: {name_id}\tavoid: {avoid}')
             image_url = row.find_all('td')[1].find('img')['src']
-            if check_club_similarity(self.name_id, self.image_url, name_id, image_url):
-                possible_parent = ClubTransferFlows(name_id)
-                if possible_parent.total_value < self.total_value:
+            if check_club_similarity(self.name_id, self.image_url, name_id, image_url): # Check that clubs are similar (images, contact, etc)
+                possible_parent = ClubTransferFlows(name_id) # Get metadata of possible parent
+                if possible_parent.total_value < self.total_value: # Check that possible parent is worth more than this club (may not be available)
                     continue
-                parents_parent = possible_parent.find_senior_team(avoid=avoid)
-                if parents_parent is None:
+                parents_parent = possible_parent.find_senior_team(avoid=avoid) # Try to find a senior team of this possible parent, avoid self
+                if parents_parent is None: # If no parents were found for this possible parents this means this club IS a senior team
                     with open(ACADEMIES_JSON, 'r') as f:
                         known_academies = json.load(f)
                     with open(ACADEMIES_JSON, 'w') as f:
@@ -106,7 +106,7 @@ class ClubTransferFlows:
                             known_academies[possible_parent.name_id] = {'academies': [self.name_id]}
                         json.dump(known_academies, f)
                     return possible_parent.name_id
-                else:
+                else: # If the possible parent has a parent of it's own, that one is this club's parent
                     with open(ACADEMIES_JSON, 'r') as f:
                         known_academies = json.load(f)
                     with open(ACADEMIES_JSON, 'w') as f:
@@ -126,13 +126,14 @@ class ClubTransferFlows:
 
 def check_club_similarity(club_a_name_id, club_a_image_url, club_b_name_id, club_b_image_url):
     from models.interface import equal_images
-    if club_a_image_url.split('lm=')[1] == club_b_image_url.split('lm=')[1]:
+    if club_a_image_url.split('lm=')[1] == club_b_image_url.split('lm=')[1]: # Image IDs are equal
         return True
-    elif abs(int(club_a_image_url.split('lm=')[1]) - int(club_b_image_url.split('lm=')[1])) < 5:
-        if equal_images(club_a_image_url, club_b_image_url):
+    elif abs(int(club_a_image_url.split('lm=')[1]) - int(club_b_image_url.split('lm=')[1])) < 5: # Image IDs are close
+        if equal_images(club_a_image_url, club_b_image_url): # Image content is equal
             return True
     club_a = Club(club_a_name_id)
     club_b = Club(club_b_name_id)
+    # Otherwise check available contact information
     if club_a.fax_number and club_a.fax_number == club_b.fax_number:
         return True
     if club_a.tel_number and club_a.tel_number == club_b.tel_number:
