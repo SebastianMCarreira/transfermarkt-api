@@ -8,20 +8,8 @@ from models.club import Club, ClubStaff
 class CachedGet:
     def __init__(self, url: str):
         self.url_path = url.split(HOST)[1]
-        self.file_path = url.split(HOST)[1].replace('/',VS)
-        if os.path.exists(os.path.join(CACHE_PATH, self.file_path)):
-            with open(os.path.join(CACHE_PATH, self.file_path), 'r') as f:
-                self.content = f.read()
-        else:
-            content = requests.get(url, headers=HEADERS).content.decode('utf-8')
-            if '503 Service Unavailable' in content:
-                print(f"503 IN: {url}")
-                self.content = CachedGet(url).content
-            else:
-                self.content = content
-                print('making request: '+url)
-                with open(os.path.join(CACHE_PATH, self.file_path), 'w') as f:
-                    f.write(self.content)
+        content = requests.get(url, headers=HEADERS).content.decode('utf-8')
+        self.content = content
 
 class CachedGetPng:
     def __init__(self, url: str):

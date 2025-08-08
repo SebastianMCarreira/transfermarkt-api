@@ -42,7 +42,7 @@ class ClubAllTransfers:
         self.name_id = name_id
         self.url_name = name_id.split('_')[0]
         self.id = name_id.split('_')[1]
-        self.html = CachedGet(f'https://{HOST}/{self.url_name}/alletransfers/verein/{self.id}').content
+        self.html = CachedGet(f'{HOST}/{self.url_name}/alletransfers/verein/{self.id}').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.transfers = []
         for window in bs.find_all('div', {'class':'row'})[1:]:

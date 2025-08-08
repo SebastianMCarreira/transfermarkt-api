@@ -8,11 +8,11 @@ class Manager:
         self.name_id = name_id
         self.url_name = name_id.split('_')[0]
         self.id = name_id.split('_')[1]
-        self.html = CachedGet(f'https://{HOST}/{self.url_name}/profil/trainer/{self.id}').content
+        self.html = CachedGet(f'{HOST}/{self.url_name}/profil/trainer/{self.id}').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.name = bs.find('h1').text.strip()
         if bs.find('a', {'class':'data-header__box--link'}) and 'Former player:' in bs.find('a', {'class':'data-header__box--link'}).text:
-            self.player_url = f'https://{HOST}'+bs.find('a', {'class':'data-header__box--link'})['href']
+            self.player_url = f'{HOST}'+bs.find('a', {'class':'data-header__box--link'})['href']
         else:
             self.player_url = None
         self.manager = None
@@ -21,7 +21,7 @@ class Manager:
         self.clubs = [
             {
                 'club': club_row.find_all('td')[1].find('a').text,
-                'club_url': f'https://{HOST}'+club_row.find_all('td')[1].find('a')['href'],
+                'club_url': f'{HOST}'+club_row.find_all('td')[1].find('a')['href'],
                 'position': club_row.find_all('td')[1].text.replace(club_row.find_all('td')[1].find('a').text,''),
                 'appointed': datetime.strptime(club_row.find_all('td')[2].text.split('(')[1], '%b %d, %Y)') if '(' in club_row.find_all('td')[2].text else None,
                 'until': 'current' if CURRENT_CLUB in club_row['class'] else datetime.strptime(club_row.find_all('td')[3].text.split('(')[1], '%b %d, %Y)') if '(' in club_row.find_all('td')[3].text else None,
@@ -57,12 +57,12 @@ class Manager:
 class AvailableManagers:
     def __init__(self):
         from models.interface import CachedGet
-        self.html = CachedGet(f'https://{HOST}/trainer/verfuegbaretrainer/statistik').content
+        self.html = CachedGet(f'{HOST}/trainer/verfuegbaretrainer/statistik').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.managers = [
             {
                 'manager': manager_row.find_all('td')[0].text.strip().split('\n')[0].strip(),
-                'manager_url': f'https://{HOST}'+manager_row.find_all('td')[0].find('a')['href']
+                'manager_url': f'{HOST}'+manager_row.find_all('td')[0].find('a')['href']
             }
             for manager_row in bs.find('div', {'class': 'responsive-table'}).find('tbody').find_all('tr', recursive=False)[1:]
         ]

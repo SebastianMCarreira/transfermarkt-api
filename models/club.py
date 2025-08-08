@@ -9,7 +9,7 @@ class Club:
         self.name_id = name_id
         self.url_name = name_id.split('_')[0]
         self.id = name_id.split('_')[1]
-        self.html = CachedGet(f'https://{HOST}/{self.url_name}/startseite/verein/{self.id}').content
+        self.html = CachedGet(f'{HOST}/{self.url_name}/startseite/verein/{self.id}').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.name = bs.find('h1').text.strip()
         facts_box = bs.find('div', {'class': 'box daten-und-fakten-verein'})
@@ -49,13 +49,13 @@ class ClubStaff:
         self.name_id = name_id
         self.url_name = name_id.split('_')[0]
         self.id = name_id.split('_')[1]
-        self.html = CachedGet(f'https://{HOST}/{self.url_name}/mitarbeiter/verein/{self.id}').content
+        self.html = CachedGet(f'{HOST}/{self.url_name}/mitarbeiter/verein/{self.id}').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.coaching = [
             {
                 'name': coaching_row.find_all('td')[0].text.strip().split('\n')[0].strip(),
                 'position': coaching_row.find_all('td')[0].text.strip().split('\n')[-1].strip(),
-                'manager_url': f'https://{HOST}'+coaching_row.find_all('td')[0].find('a')['href']
+                'manager_url': f'{HOST}'+coaching_row.find_all('td')[0].find('a')['href']
             } for coaching_row in bs.find_all('div', {'class': 'box'})[0].find('tbody').find_all('tr', recursive=False)
         ]
         self.manager = None if len([c for c in self.coaching if c['position'] == 'Manager']) == 0 else [c for c in self.coaching if c['position'] == 'Manager'][0]
@@ -67,7 +67,7 @@ class ClubTransferFlows:
         self.name_id = name_id
         self.url_name = name_id.split('_')[0]
         self.id = name_id.split('_')[1]
-        self.html = CachedGet(f'https://{HOST}/{self.url_name}/transferstroeme/verein/{self.id}/plus/1&{TRANSFER_FLOWS_QUERY_PARAMS}').content
+        self.html = CachedGet(f'{HOST}/{self.url_name}/transferstroeme/verein/{self.id}/plus/1&{TRANSFER_FLOWS_QUERY_PARAMS}').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.name = bs.find('h1').text.strip()
         self.image_url = bs.find('div', {'class': 'data-header__profile-container'}).find('img')['src']
@@ -77,5 +77,5 @@ class ClubTransferFlows:
 class ClubSearch:
     def __init__(self, search_str):
         from models.interface import CachedGet
-        self.html = CachedGet(f'https://{HOST}/schnellsuche/ergebnis/schnellsuche?query={search_str.replace(' ', '+')}').content
+        self.html = CachedGet(f'{HOST}/schnellsuche/ergebnis/schnellsuche?query={search_str.replace(' ', '+')}').content
         
