@@ -41,3 +41,16 @@ def has_academy_suffix(name):
     return any([
         name.endswith(suffix) for suffix in ACADEMY_SUFFIXES
     ])
+
+
+def tm_minute_span_to_str(minute_span):
+    _, x, y = minute_span['style'].replace(';','').split(' ') # Split background-position coords
+    extra = '' if '\n    \xa0' == minute_span.text else minute_span.text.strip() # Get extra minutes if exist ('+2' for example)
+    x = int(x.replace('-','').replace('px', '')) # Convert coords to ints
+    y = int(y.replace('-','').replace('px', ''))
+    # Minute images are spaced in 36x26px with 10 minute images per row starting from minute 1
+    # and 12 rows up to the minute 120
+    units = (x/36)+1 if x < 324 else 0
+    tens = y/36
+    minute = int(units + tens * 10) # Calculate minute from units and tens
+    return f"{minute}{extra}"
