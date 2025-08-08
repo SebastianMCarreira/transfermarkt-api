@@ -16,14 +16,14 @@ class Club:
         self.tel_number = facts_box.find('span', {'itemprop':'telephone'}).text if facts_box.find('span', {'itemprop':'telephone'}) else None
         self.fax_number = facts_box.find('span', {'itemprop':'faxNumber'}).text if facts_box.find('span', {'itemprop':'faxNumber'}) else None
         self.site = facts_box.find('span', {'itemprop':'url'}).text if facts_box.find('span', {'itemprop':'url'}) else None
-        related_clubs = bs.find_all('ul', {'class': 'data-header__list-clubs'})[0].find_all('a')
+        related_clubs = bs.find_all('ul', {'class': 'data-header__list-clubs'})[0].find_all('a') if len(bs.find_all('ul', {'class': 'data-header__list-clubs'})) != 0 else []
         senior_club_name_id = None
         for related_club in related_clubs:
             rel_club_name_id = parse_name_id(related_club['href'])
             if not has_academy_suffix(rel_club_name_id):
                 senior_club_name_id = rel_club_name_id
                 break
-        self.academy_of = None if senior_club_name_id == self.name_id else Club(senior_club_name_id)
+        self.academy_of = None if senior_club_name_id == self.name_id or len(related_clubs) == 0 else Club(senior_club_name_id)
         self.total_value = parse_value(bs.find('a','data-header__market-value-wrapper').text) if bs.find('a','data-header__market-value-wrapper') else 0
 
     def find_all_academies(self):

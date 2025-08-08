@@ -7,13 +7,13 @@ class League:
         self.name_id = name_code
         self.url_name = name_code.split('_')[0]
         self.code = name_code.split('_')[1]
-        self.html = CachedGet(f'{HOST}/{self.url_name}/startseite/wettbewerb/{self.code}').content
+        self.html = CachedGet(f'{HOST}/{self.url_name}/fairnesstabelle/pokalwettbewerb/{self.code}').content
         bs = BeautifulSoup(self.html, features="html.parser")
-        self.name = bs.find('h1').text.strip()
+        self.name = bs.find_all('header')[0].find_all('div', {'class': 'data-header__headline-wrapper'})[0].text.strip()
         self.current_clubs = [
             {
-                'club': club_row.find_all('td')[1].text.strip(),
-                'club_url': f'{HOST}'+club_row.find_all('td')[1].find('a')['href'],
+                'club': club_row.find_all('td')[2].text.strip(),
+                'club_url': f'{HOST}'+club_row.find_all('td')[2].find('a')['href'],
             } for club_row in bs.find_all('table')[1].find_all('tr')[2:]
         ]
 
