@@ -54,3 +54,48 @@ def tm_minute_span_to_str(minute_span):
     tens = y/36
     minute = int(units + tens * 10) # Calculate minute from units and tens
     return f"{minute}{extra}"
+
+def tm_formation_position_to_position(formation_div):
+    if formation_div['style'] in ['top: 80%; left: 40%;']:
+        return 'GK'
+    elif formation_div['style'] in ['top: 63%; left: 28%;']:
+        return 'CBL'
+    elif formation_div['style'] in ['top: 63%; left: 52.5%;']:
+        return 'CBD'
+    elif formation_div['style'] in ['']:
+        return 'CBC'
+    elif formation_div['style'] in ['top: 61%; left: 7.5%;']:
+        return 'LB'
+    elif formation_div['style'] in ['']:
+        return 'LWB'
+    elif formation_div['style'] in ['top: 61%; left: 73%;']:
+        return 'RB'
+    elif formation_div['style'] in ['']:
+        return 'RWB'
+    elif formation_div['style'] in ['top: 39%; left: 40%;', 'top: 43%; left: 28%;']:
+        return 'DM'
+    elif formation_div['style'] in ['top: 43%; left: 52%;']:
+        return 'DM2'
+    elif formation_div['style'] in ['top: 28%; left: 27%;']:
+        return 'MC'
+    elif formation_div['style'] in ['top: 28%; left: 53%;']:
+        return 'MC2'
+    elif formation_div['style'] in ['top: 23%; left: 40%;']:
+        return 'AM'
+    elif formation_div['style'] in ['']:
+        return 'AM2'
+    elif formation_div['style'] in ['']:
+        return 'LMF'
+    elif formation_div['style'] in ['']:
+        return 'RMF'
+    elif formation_div['style'] in ['top: 3%; left: 40%;']:
+        return 'CF'
+    elif formation_div['style'] in ['']:
+        return 'SS'
+    elif formation_div['style'] in ['top: 10%; left: 15%;', 'top: 18%; left: 15%;']:
+        return 'LW'
+    elif formation_div['style'] in ['top: 10%; left: 65%;', 'top: 18%; left: 65%;']:
+        return 'RW'
+    else:
+        raise ValueError(f"Unknown position coordinates: {formation_div['style']}")
+

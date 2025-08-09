@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from models.constants import HOST
 from models.utils import tm_minute_span_to_str
+from functools import total_ordering
 
 class Match:
     def __init__(self, match_id:str):
@@ -12,23 +13,29 @@ class Match:
         for section in bs.find_all('div', {'class': 'large-12 columns'}):
             if 'Referee' in section.text: # Match data section
                 continue
-            elif 'This match' in section.text: # Ghost section
+            elif 'This match' in section.text: # Ghost? section
                 continue
             elif 'Timeline' in section.text: # Timeline section
                 continue
             elif 'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
                 continue
             elif 'Goals' in section.find('h2').text.strip(): # Goals section
-                continue
+                self.match_events.extend([Goal(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
             elif 'Substitutions' in section.find('h2').text.strip(): # Substitutions section
-                continue
+                self.match_events.extend([Substitution(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
             elif 'Cards' in section.find('h2').text.strip(): # Bookings section
-                continue
+                self.match_events.extend([Booking(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
             elif 'Penalty shoot-out' in section.find('h2').text.strip(): # Shoot-out section
+                continue
+            elif 'Special events' in section.find('h2').text.strip(): # Special events section
                 continue
             else:
                 raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")
+        self.match_events.sort()
+        for event in self.match_events:
+            print(str(event))
 
+@total_ordering
 class MatchEvent:
     def __init__(self, event_row):
         minute_span = event_row.find('span')
@@ -43,12 +50,31 @@ class MatchEvent:
             self.half = 2
         elif self.minute_int < 121:
             self.half = 3
-        main_player_url = event_row.find('div', {'class': 'sb-aktion-spielerbild'}).find('a')['href']
+        main_player_url = event_row.find_all('div', {'class': 'sb-aktion-spielerbild'})[0].find('a')['href']
         main_player_name_id = main_player_url[1:].replace('/profil/spieler/', '_') 
         self.main_player = main_player_name_id
 
     def __str__(self):
         return f"{self.minute_str}: {self.main_player}"
+    
+    def _is_valid_operand(self, other):
+        return (hasattr(other, "minute_int") and
+                hasattr(other, "minute_int_ext"))
+    
+    def __lt__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        if self.minute_int < other.minute_int:
+            return True
+        elif self.minute_int == other.minute_int:
+            return self.minute_int_ext < other.minute_int_ext
+        else:
+            return False
+    
+    def __eq__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return self.minute_int == other.minute_int and self.minute_int_ext == other.minute_int_ext
 
 class Goal(MatchEvent):
     def __init__(self, event_row):
@@ -66,5 +92,36 @@ class Goal(MatchEvent):
         assist_str = f" Assist: {self.assistant_name_id} ({self.assist_type})" if self.assist_type else f" Assist: {self.assistant_name_id}" if self. assistant_name_id else ''
         return f"{self.minute_str}: Goal: {goal_str}{assist_str} [{self.scoreboard}]"
 
+class Substitution(MatchEvent):
+    def __init__(self, event_row):
+        super().__init__(event_row)
+        self.subbed_out_name_id = self.main_player
+        subbed_in_url = event_row.find('div', {'class': 'sb-aktion-aktion'}).find('div', {'class': {'sb-aktion-spielerbild'}}).find('a')['href']
+        self.subbed_in_name_id = subbed_in_url[1:].replace('/profil/spieler/','_')
+        self.sub_type = event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}).find('span')['title'] if event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}) else None
+    
+    def __str__(self):
+        if self.sub_type:
+            return f"{self.minute_str}: Out: {self.subbed_out_name_id} In: {self.subbed_in_name_id} [{self.sub_type}]"
+        else:
+            return f"{self.minute_str}: Out: {self.subbed_out_name_id} In: {self.subbed_in_name_id}"
 
-
+class Booking(MatchEvent):
+    def __init__(self, event_row):
+        super().__init__(event_row)
+        self.booked_player = self.main_player
+        self.reason = event_row.find('div', {'class': 'sb-aktion-aktion'}).text.split('\n')[1].strip().split(',')[1].strip() if len(event_row.find('div', {'class': 'sb-aktion-aktion'}).text.split('\n')[1].strip().split(',')) == 2 else None
+        if 'sb-gelb' in event_row.find('div', {'class': 'sb-aktion-spielstand'}).find('span')['class']:
+            self.card = 'Yellow' 
+        elif 'sb-rot' in event_row.find('div', {'class': 'sb-aktion-spielstand'}).find('span')['class']:
+            self.card = 'Red'
+        elif 'sb-gelbrot' in event_row.find('div', {'class': 'sb-aktion-spielstand'}).find('span')['class']:
+            self.card = 'Second yellow'
+        else:
+            raise ValueError('Unidentified card classes: '+str(event_row.find('div', {'class': 'sb-aktion-spielstand'}).find('span')['class']))
+        
+    def __str__(self):
+        if self.reason:
+            return f"{self.minute_str}: {self.card} card: {self.booked_player} [{self.reason}]"
+        else:
+            return f"{self.minute_str}: {self.card} card: {self.booked_player}"
