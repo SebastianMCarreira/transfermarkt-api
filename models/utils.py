@@ -99,3 +99,5 @@ def tm_formation_position_to_position(formation_div):
     else:
         raise ValueError(f"Unknown position coordinates: {formation_div['style']}")
 
+def player_anchor_to_name_id(player_anchor):
+    return player_anchor['href'][1:].replace('/profil/spieler/','_')

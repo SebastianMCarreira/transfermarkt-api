@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from models.constants import HOST
-from models.utils import tm_minute_span_to_str
+from models.utils import tm_minute_span_to_str, tm_formation_position_to_position, player_anchor_to_name_id
 from functools import total_ordering
 
 class Match:
@@ -18,7 +18,8 @@ class Match:
             elif 'Timeline' in section.text: # Timeline section
                 continue
             elif 'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
-                continue
+                self.home_club = MatchClub(section.find_all('div', {'class': 'large-6'})[0])
+                self.away_club = MatchClub(section.find_all('div', {'class': 'large-6'})[1])
             elif 'Goals' in section.find('h2').text.strip(): # Goals section
                 self.match_events.extend([Goal(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
             elif 'Substitutions' in section.find('h2').text.strip(): # Substitutions section
@@ -32,8 +33,6 @@ class Match:
             else:
                 raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")
         self.match_events.sort()
-        for event in self.match_events:
-            print(str(event))
 
 @total_ordering
 class MatchEvent:
@@ -50,8 +49,7 @@ class MatchEvent:
             self.half = 2
         elif self.minute_int < 121:
             self.half = 3
-        main_player_url = event_row.find_all('div', {'class': 'sb-aktion-spielerbild'})[0].find('a')['href']
-        main_player_name_id = main_player_url[1:].replace('/profil/spieler/', '_') 
+        main_player_name_id = player_anchor_to_name_id(event_row.find_all('div', {'class': 'sb-aktion-spielerbild'})[0].find('a'))
         self.main_player = main_player_name_id
 
     def __str__(self):
@@ -96,8 +94,7 @@ class Substitution(MatchEvent):
     def __init__(self, event_row):
         super().__init__(event_row)
         self.subbed_out_name_id = self.main_player
-        subbed_in_url = event_row.find('div', {'class': 'sb-aktion-aktion'}).find('div', {'class': {'sb-aktion-spielerbild'}}).find('a')['href']
-        self.subbed_in_name_id = subbed_in_url[1:].replace('/profil/spieler/','_')
+        self.subbed_in_name_id = player_anchor_to_name_id(event_row.find('div', {'class': 'sb-aktion-aktion'}).find('div', {'class': {'sb-aktion-spielerbild'}}).find('a'))
         self.sub_type = event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}).find('span')['title'] if event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}) else None
     
     def __str__(self):
@@ -125,3 +122,37 @@ class Booking(MatchEvent):
             return f"{self.minute_str}: {self.card} card: {self.booked_player} [{self.reason}]"
         else:
             return f"{self.minute_str}: {self.card} card: {self.booked_player}"
+
+class MatchClub:
+    def __init__(self, club_div):
+        self.starters = {}
+        self.subs = {}
+        self.coach_name_id = club_div.find('tr', {'class':'bench-table__tr'}).find('a')['href'][1:].replace('/profil/trainer/','_')
+        for starter in club_div.find_all('div', {'class': 'formation-player-container'}):
+            player_name_id = player_anchor_to_name_id(starter.find('a'))
+            self.starters[player_name_id] = MatchPlayer(player_name_id, tm_formation_position_to_position(starter))
+        for sub in club_div.find('table').find_all('tr')[:-1]:
+            player_name_id = player_anchor_to_name_id(sub.find('a'))
+            self.subs[player_name_id] =  MatchPlayer(player_name_id, 'SUB')
+    
+    def print_formation(self):
+        for starter in self.starters.keys():
+            print(f"{self.starters[starter].starting_position}: {starter}")
+        print(f"COA: {self.coach_name_id}")
+
+class MatchPlayer:
+    def __init__(self, player_name_id, starting_position):
+        self.player_name_id = player_name_id
+        self.starting_position = starting_position
+        self.goals = []
+        self.own_goals = []
+        self.assists = []
+        self.yellow_card = None
+        self.second_yellow = None
+        self.red_card = None
+        self.sub_out = None
+        self.sub_in = None
+        self.shootout = None
+        self.captain = None
+        self.injury = None
+
