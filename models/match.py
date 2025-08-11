@@ -10,6 +10,9 @@ class Match:
         self.html = CachedGet(f'{HOST}/spielbericht/index/spielbericht/{self.id}').content
         bs = BeautifulSoup(self.html, features="html.parser")
         self.match_events = []
+        self.clubs = {}
+        self.home_club = bs.find_all('div', {'class':'sb-team'})[0].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
+        self.away_club = bs.find_all('div', {'class':'sb-team'})[1].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
         for section in bs.find_all('div', {'class': 'large-12 columns'}):
             if 'Referee' in section.text: # Match data section
                 continue
@@ -18,14 +21,23 @@ class Match:
             elif 'Timeline' in section.text: # Timeline section
                 continue
             elif 'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
-                self.home_club = MatchClub(section.find_all('div', {'class': 'large-6'})[0])
-                self.away_club = MatchClub(section.find_all('div', {'class': 'large-6'})[1])
+                self.clubs[self.home_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[0])
+                self.clubs[self.away_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[1])
             elif 'Goals' in section.find('h2').text.strip(): # Goals section
-                self.match_events.extend([Goal(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
+                for event_row in section.find_all('div', {'class': 'sb-aktion'}):
+                    goal = Goal(event_row)
+                    self.match_events.append(goal)
+                    goal.add_to_players(self)
             elif 'Substitutions' in section.find('h2').text.strip(): # Substitutions section
-                self.match_events.extend([Substitution(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
+                for event_row in section.find_all('div', {'class': 'sb-aktion'}):
+                    substitution = Substitution(event_row)
+                    self.match_events.append(substitution)
+                    substitution.add_to_players(self)
             elif 'Cards' in section.find('h2').text.strip(): # Bookings section
-                self.match_events.extend([Booking(event_row) for event_row in section.find_all('div', {'class': 'sb-aktion'})])
+                for event_row in section.find_all('div', {'class': 'sb-aktion'}):
+                    booking = Booking(event_row)
+                    self.match_events.append(booking)
+                    booking.add_to_players(self)
             elif 'Penalty shoot-out' in section.find('h2').text.strip(): # Shoot-out section
                 continue
             elif 'Special events' in section.find('h2').text.strip(): # Special events section
@@ -47,10 +59,9 @@ class MatchEvent:
             self.half = 1
         elif self.minute_int < 106:
             self.half = 2
-        elif self.minute_int < 121:
+        else:
             self.half = 3
-        main_player_name_id = player_anchor_to_name_id(event_row.find_all('div', {'class': 'sb-aktion-spielerbild'})[0].find('a'))
-        self.main_player = main_player_name_id
+        self.main_player = player_anchor_to_name_id(event_row.find_all('div', {'class': 'sb-aktion-spielerbild'})[0].find('a'))
 
     def __str__(self):
         return f"{self.minute_str}: {self.main_player}"
@@ -73,6 +84,11 @@ class MatchEvent:
         if not self._is_valid_operand(other):
             return NotImplemented
         return self.minute_int == other.minute_int and self.minute_int_ext == other.minute_int_ext
+    
+    def add_to_players(self, match:Match):
+        for club in match.clubs.keys():
+            if self.main_player in match.clubs[club].players:
+                self.player_club = club
 
 class Goal(MatchEvent):
     def __init__(self, event_row):
@@ -81,7 +97,7 @@ class Goal(MatchEvent):
         assistant_url = event_row.find('div', {'class': 'sb-aktion-aktion'}).find_all('a')[1]['href'] if len(event_row.find('div', {'class': 'sb-aktion-aktion'}).find_all('a')) == 2 else None
         self.assistant_name_id = assistant_url[1:].split('/saison')[0].replace('/leistungsdatendetails/spieler/', '_') if assistant_url else None
         goal_details_lines = event_row.find('div', {'class': 'sb-aktion-aktion'}).text.split('\n')
-        self.goal_type = goal_details_lines[1].split(',')[1].strip() if len(goal_details_lines[1].split(',')) == 3 else None
+        self.goal_type = goal_details_lines[1].split(',')[1].strip() if len(goal_details_lines[1].split(',')) == 3 else 'Own-goal' if 'Own-goal' in event_row.text else None
         self.assist_type = goal_details_lines[2].split(',')[1].strip() if self.assistant_name_id and len(goal_details_lines[2].split(',')) == 3 else None
         self.scoreboard = event_row.find_all('div', {'class': 'sb-aktion-spielstand'})[0].text.strip()
 
@@ -89,6 +105,16 @@ class Goal(MatchEvent):
         goal_str = f"{self.goalscorer_name_id} ({self.goal_type})" if self.goal_type else self.goalscorer_name_id
         assist_str = f" Assist: {self.assistant_name_id} ({self.assist_type})" if self.assist_type else f" Assist: {self.assistant_name_id}" if self. assistant_name_id else ''
         return f"{self.minute_str}: Goal: {goal_str}{assist_str} [{self.scoreboard}]"
+    
+    def add_to_players(self, match:Match):
+        super().add_to_players(match)
+        if self.goal_type == 'Own-goal':
+            match.clubs[self.player_club].players[self.goalscorer_name_id].own_goals.append(self.minute_str)
+        else:
+            match.clubs[self.player_club].players[self.goalscorer_name_id].goals.append(self.minute_str)
+        if self.assistant_name_id:
+            match.clubs[self.player_club].players[self.assistant_name_id].assists.append(self.minute_str)
+
 
 class Substitution(MatchEvent):
     def __init__(self, event_row):
@@ -102,6 +128,12 @@ class Substitution(MatchEvent):
             return f"{self.minute_str}: Out: {self.subbed_out_name_id} In: {self.subbed_in_name_id} [{self.sub_type}]"
         else:
             return f"{self.minute_str}: Out: {self.subbed_out_name_id} In: {self.subbed_in_name_id}"
+    
+    def add_to_players(self, match:Match):
+        super().add_to_players(match)
+        match.clubs[self.player_club].players[self.subbed_out_name_id].sub_out = self.minute_str
+        match.clubs[self.player_club].players[self.subbed_in_name_id].sub_in = self.minute_str
+        
 
 class Booking(MatchEvent):
     def __init__(self, event_row):
@@ -122,23 +154,40 @@ class Booking(MatchEvent):
             return f"{self.minute_str}: {self.card} card: {self.booked_player} [{self.reason}]"
         else:
             return f"{self.minute_str}: {self.card} card: {self.booked_player}"
+    
+    def add_to_players(self, match:Match):
+        super().add_to_players(match)
+        if self.card == 'Yellow':
+             match.clubs[self.player_club].players[self.booked_player].yellow_card = self.minute_str
+        elif self.card == 'Red':
+             match.clubs[self.player_club].players[self.booked_player].red_card = self.minute_str
+        elif self.card == 'Second yellow':
+             match.clubs[self.player_club].players[self.booked_player].second_yellow = self.minute_str
 
 class MatchClub:
     def __init__(self, club_div):
-        self.starters = {}
-        self.subs = {}
+        self.players = {}
+        self.club_name_id = club_div.find_all('a')[0]['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
         self.coach_name_id = club_div.find('tr', {'class':'bench-table__tr'}).find('a')['href'][1:].replace('/profil/trainer/','_')
         for starter in club_div.find_all('div', {'class': 'formation-player-container'}):
             player_name_id = player_anchor_to_name_id(starter.find('a'))
-            self.starters[player_name_id] = MatchPlayer(player_name_id, tm_formation_position_to_position(starter))
+            self.players[player_name_id] = MatchPlayer(player_name_id, tm_formation_position_to_position(starter))
         for sub in club_div.find('table').find_all('tr')[:-1]:
             player_name_id = player_anchor_to_name_id(sub.find('a'))
-            self.subs[player_name_id] =  MatchPlayer(player_name_id, 'SUB')
+            self.players[player_name_id] =  MatchPlayer(player_name_id, 'SUB')
     
     def print_formation(self):
-        for starter in self.starters.keys():
-            print(f"{self.starters[starter].starting_position}: {starter}")
-        print(f"COA: {self.coach_name_id}")
+        print('====================================')
+        print(self.club_name_id)
+        for starter in self.players.keys():
+            if self.players[starter].starting_position == 'SUB':
+                continue
+            print(self.players[starter])
+        print(f"Coach: {self.coach_name_id}")
+        for starter in self.players.keys():
+            if self.players[starter].starting_position != 'SUB' or self.players[starter].get_minutes() == 0:
+                continue
+            print(self.players[starter])
 
 class MatchPlayer:
     def __init__(self, player_name_id, starting_position):
@@ -156,3 +205,36 @@ class MatchPlayer:
         self.captain = None
         self.injury = None
 
+    def __str__(self):
+        output = f"{self.player_name_id} [{self.starting_position} {self.get_minutes()}']"
+        for goal in self.goals:
+            output += f" ⚽{goal}'"
+        for goal in self.own_goals:
+            output += f" ❗⚽{goal}'"
+        for assist in self.assists:
+            output += f" 👟{assist}'"
+        if self.yellow_card:
+            output += f" 🟨{self.yellow_card}'"
+        if self.second_yellow:
+            output += f" 🟨🟥{self.second_yellow}'"
+        if self.red_card:
+            output += f" 🟥{self.red_card}'"
+        if self.sub_out:
+            output += f" ⬇️{self.sub_out}'"
+        if self.sub_in:
+            output += f" ⬆️{self.sub_in}'"
+        return output
+    
+    def get_minutes(self):
+        minutes = 90
+        if self.starting_position == 'SUB':
+            if self.sub_in:
+                minutes -= int(self.sub_in.split('+')[0])-1
+            else:
+                return 0
+        if self.sub_out:
+            remaining = 90 - int(self.sub_out.split('+')[0])
+            minutes -= remaining
+        return minutes
+
+        
