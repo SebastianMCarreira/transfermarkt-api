@@ -10,6 +10,10 @@ warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning, module
 
 # club = Club('fc-sevilla-b-atletico-_8519')
 
-match = Match('4643228')
-for club in match.clubs.values():
-    club.print_formation()
+# match = Match('4643228')
+
+league = League('torneo-final_ARGC')
+for match_id in league.get_season_matches_ids('2024'):
+    match = Match(match_id)
+    for club in match.clubs.values():
+        club.print_formation()

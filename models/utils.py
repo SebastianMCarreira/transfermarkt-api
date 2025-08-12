@@ -58,37 +58,37 @@ def tm_minute_span_to_str(minute_span):
 def tm_formation_position_to_position(formation_div):
     if formation_div['style'] in ['top: 80%; left: 40%;']:
         return 'GK'
-    elif formation_div['style'] in ['top: 63%; left: 28%;']:
+    elif formation_div['style'] in ['top: 63%; left: 28%;', 'top: 61%; left: 15%;', 'top: 61%; left: 23.5%;']:
         return 'CBL'
-    elif formation_div['style'] in ['top: 63%; left: 52.5%;']:
-        return 'CBD'
-    elif formation_div['style'] in ['']:
+    elif formation_div['style'] in ['top: 63%; left: 52.5%;', 'top: 61%; left: 65%;', 'top: 61%; left: 56.5%;']:
+        return 'CBR'
+    elif formation_div['style'] in ['top: 62%; left: 40%;', 'top: 63%; left: 40%;']:
         return 'CBC'
-    elif formation_div['style'] in ['top: 61%; left: 7.5%;']:
+    elif formation_div['style'] in ['top: 61%; left: 7.5%;', 'top: 59%; left: 7%;']:
         return 'LB'
-    elif formation_div['style'] in ['']:
+    elif formation_div['style'] in ['top: 34%; left: 15%;', 'top: 32%; left: 12%;']:
         return 'LWB'
-    elif formation_div['style'] in ['top: 61%; left: 73%;']:
+    elif formation_div['style'] in ['top: 61%; left: 73%;', 'top: 59%; left: 73%;']:
         return 'RB'
-    elif formation_div['style'] in ['']:
+    elif formation_div['style'] in ['top: 34%; left: 65%;', 'top: 32%; left: 68%;']:
         return 'RWB'
-    elif formation_div['style'] in ['top: 39%; left: 40%;', 'top: 43%; left: 28%;']:
+    elif formation_div['style'] in ['top: 39%; left: 40%;', 'top: 43%; left: 28%;', 'top: 43%; left: 40%;', 'top: 43%; left: 30%;', 'top: 38%; left: 25%;', 'top: 42%; left: 40%;']:
         return 'DM'
-    elif formation_div['style'] in ['top: 43%; left: 52%;']:
+    elif formation_div['style'] in ['top: 43%; left: 52%;', 'top: 38%; left: 55%;']:
         return 'DM2'
-    elif formation_div['style'] in ['top: 28%; left: 27%;']:
-        return 'MC'
-    elif formation_div['style'] in ['top: 28%; left: 53%;']:
-        return 'MC2'
-    elif formation_div['style'] in ['top: 23%; left: 40%;']:
+    elif formation_div['style'] in ['top: 28%; left: 27%;', 'top: 35%; left: 27%;', 'top: 35%; left: 30%;', 'top: 42%; left: 15%;', 'top: 35%; left: 20%;']:
+        return 'MF'
+    elif formation_div['style'] in ['top: 28%; left: 53%;', 'top: 35%; left: 53%;', 'top: 35%; left: 50%;', 'top: 42%; left: 65%;', 'top: 35%; left: 60%;']:
+        return 'MF2'
+    elif formation_div['style'] in ['top: 23%; left: 40%;', 'top: 23%; left: 30%;', 'top: 22%; left: 40%;', 'top: 20%; left: 30%;']:
         return 'AM'
-    elif formation_div['style'] in ['']:
+    elif formation_div['style'] in ['top: 23%; left: 50%;', 'top: 20%; left: 50%;']:
         return 'AM2'
-    elif formation_div['style'] in ['']:
+    elif formation_div['style'] in ['top: 23%; left: 12%;', 'top: 25%; left: 12%;']:
         return 'LMF'
-    elif formation_div['style'] in ['']:
+    elif formation_div['style'] in ['top: 23%; left: 68%;', 'top: 25%; left: 68%;']:
         return 'RMF'
-    elif formation_div['style'] in ['top: 3%; left: 40%;']:
+    elif formation_div['style'] in ['top: 3%; left: 40%;', 'top: 2%; left: 50%;', 'top: 2%; left: 30%;']:
         return 'CF'
     elif formation_div['style'] in ['']:
         return 'SS'

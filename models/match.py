@@ -2,6 +2,8 @@ from bs4 import BeautifulSoup
 from models.constants import HOST
 from models.utils import tm_minute_span_to_str, tm_formation_position_to_position, player_anchor_to_name_id
 from functools import total_ordering
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 class Match:
     def __init__(self, match_id:str):
@@ -13,6 +15,11 @@ class Match:
         self.clubs = {}
         self.home_club = bs.find_all('div', {'class':'sb-team'})[0].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
         self.away_club = bs.find_all('div', {'class':'sb-team'})[1].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
+        self.datetime_str = ', '.join(list(map(lambda x:x.strip(),bs.find('p', {'class':'sb-datum'}).text.split('|')))[1:])
+        self.datetime = datetime.strptime(self.datetime_str, "%a, %m/%d/%y, %I:%M %p")
+        self.datetime = self.datetime.replace(tzinfo=ZoneInfo("Europe/Berlin"))
+        self.tournament_id = bs.find('a', {'class':'direct-headline__link'})['href'].split('/')[4]
+        self.season = bs.find('a', {'class':'direct-headline__link'})['href'].split('/')[6]
         for section in bs.find_all('div', {'class': 'large-12 columns'}):
             if 'Referee' in section.text: # Match data section
                 continue
@@ -41,6 +48,12 @@ class Match:
             elif 'Penalty shoot-out' in section.find('h2').text.strip(): # Shoot-out section
                 continue
             elif 'Special events' in section.find('h2').text.strip(): # Special events section
+                continue
+            elif 'missed penalties' in section.find('h2').text.strip(): # Missed Penalties section
+                continue
+            elif 'Manager sanctions' in section.find('h2').text.strip(): # Manager sanctions section
+                continue
+            elif 'Transfers between each other' in section.find('h2').text.strip(): # Transfers between each other section
                 continue
             else:
                 raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")

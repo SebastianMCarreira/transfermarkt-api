@@ -20,3 +20,13 @@ class League:
     def get_clubs(self):
         from models.interface import get_object
         return [get_object(club['club_url']) for club in self.current_clubs]
+
+    def get_season_matches_ids(self, season:str):
+        from models.interface import CachedGet
+        html = CachedGet(f'{HOST}/{self.url_name}/gesamtspielplan/wettbewerb/{self.code}/saison_id/{season}').content
+        bs = BeautifulSoup(html, features="html.parser")
+        return [
+            anchor['href'].split('/spielbericht/')[-1] for anchor in
+            bs.find_all('a', {'class':'ergebnis-link'})
+        ]
+
