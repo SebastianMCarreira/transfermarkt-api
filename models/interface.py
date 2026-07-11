@@ -1,5 +1,5 @@
-import requests, os
-from models.constants import HOST, CACHE_PATH, HEADERS, VS, IMAGE_HOST
+import requests, os, zstandard, json, io
+from models.constants import HOST, CACHE_PATH, HEADERS, VS, IMAGE_HOST, API_HOST
 from models.player import Player
 from models.manager import Manager
 from models.league import League
@@ -7,9 +7,22 @@ from models.club import Club, ClubStaff
 
 class CachedGet:
     def __init__(self, url: str):
-        self.url_path = url.split(HOST)[1]
-        content = requests.get(url, headers=HEADERS).content.decode('utf-8')
-        self.content = content
+        if HOST in url:
+            host = HOST
+        elif API_HOST in url:
+            host = API_HOST
+        else:
+            raise ValueError(f"URL must start with {HOST} or {API_HOST}")
+        self.url_path = url.split(host)[1]
+        self.file_path = url.split(host)[1].replace('/',VS)
+        if os.path.exists(os.path.join(CACHE_PATH, self.file_path)):
+            with open(os.path.join(CACHE_PATH, self.file_path), 'rb') as f:
+                self.content = f.read()
+        else:
+            self.content = requests.get(url, headers=HEADERS).content
+            print('making request: '+url)   
+            with open(os.path.join(CACHE_PATH, self.file_path), 'wb') as f:
+                f.write(self.content)
 
 class CachedGetPng:
     def __init__(self, url: str):
@@ -46,3 +59,13 @@ def equal_images(image_a_url, image_b_url):
     image_a = CachedGetPng(f'https://tmssl.akamaized.net/images/wappen/head/{club_id_a}.png?lm={image_id_a}')
     image_b = CachedGetPng(f'https://tmssl.akamaized.net/images/wappen/head/{club_id_b}.png?lm={image_id_b}')
     return image_a.content == image_b.content
+
+def get_json_decompressed(path: str):
+    response = CachedGet(f'{API_HOST}/{path}')
+    try:
+        return json.loads(response.content)
+    except json.JSONDecodeError:
+        dctx = zstandard.ZstdDecompressor()
+        with dctx.stream_reader(io.BytesIO(response.content)) as reader:
+            data = reader.read()
+        return json.loads(data)

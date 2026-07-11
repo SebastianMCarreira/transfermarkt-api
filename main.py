@@ -4,6 +4,7 @@ from models.interface import get_object, equal_images
 from models.transfers import ClubAllTransfers
 from models.club import Club
 from models.match import Match
+from models.player import Player
 import warnings
 from bs4 import MarkupResemblesLocatorWarning
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning, module='bs4')
@@ -12,8 +13,17 @@ warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning, module
 
 # match = Match('4643228')
 
-league = League('torneo-final_ARGC')
-for match_id in league.get_season_matches_ids('2024'):
-    match = Match(match_id)
-    for club in match.clubs.values():
-        club.print_formation()
+# league = League('torneo-final_ARGC')
+# for match_id in league.get_season_matches_ids('2024'):
+#     match = Match(match_id)
+#     for club in match.clubs.values():
+#         club.print_formation()
+
+messi = Player('lionel-messi_28003')
+print(messi)
+
+match = Match('3589262')
+print(match)
+for club in match.clubs.values():
+    # club.print_formation()
+    print(club.players.keys())

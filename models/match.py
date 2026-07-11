@@ -59,6 +59,9 @@ class Match:
                 raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")
         self.match_events.sort()
 
+    def __repr__(self):
+        return f'Match(id={self.id}, home_club={self.home_club}, away_club={self.away_club}, datetime={self.datetime}, tournament_id={self.tournament_id}, season={self.season})'
+
 @total_ordering
 class MatchEvent:
     def __init__(self, event_row):
