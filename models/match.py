@@ -15,52 +15,66 @@ class Match:
         self.clubs = {}
         self.home_club = bs.find_all('div', {'class':'sb-team'})[0].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
         self.away_club = bs.find_all('div', {'class':'sb-team'})[1].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
-        self.datetime_str = ', '.join(list(map(lambda x:x.strip(),bs.find('p', {'class':'sb-datum'}).text.split('|')))[1:])
-        self.datetime = datetime.strptime(self.datetime_str, "%a, %m/%d/%y, %I:%M %p")
+        self.datetime_str = ', '.join(list(map(lambda x:x.strip(), filter(lambda x: " leg" not in x, bs.find('p', {'class':'sb-datum'}).text.split('|')[1:]))))
+        self.datetime = datetime.strptime(self.datetime_str, "%a, %d/%m/%y, %I:%M %p")
         self.datetime = self.datetime.replace(tzinfo=ZoneInfo("Europe/Berlin"))
         self.tournament_id = bs.find('a', {'class':'direct-headline__link'})['href'].split('/')[4]
         self.season = bs.find('a', {'class':'direct-headline__link'})['href'].split('/')[6]
-        for section in bs.find_all('div', {'class': 'large-12 columns'}):
+        for section in bs.find_all('div', {'class': 'box'}): # Do a first pass to ensure all involved players are registered
+            if section.find('h2') and'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
+                self.clubs[self.home_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[0])
+                self.clubs[self.away_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[1])
+            elif section.find('h2') and 'Substitutions' in section.find('h2').text.strip(): # Substitutions section
+                for event_row in section.find_all('div', {'class': 'sb-aktion'}):
+                    substitution = Substitution(event_row)
+                    self.match_events.append(substitution)
+                    substitution.add_to_players(self)
+        for section in bs.find_all('div', {'class': 'box'}):
             if 'Referee' in section.text: # Match data section
                 continue
             elif 'This match' in section.text: # Ghost? section
                 continue
             elif 'Timeline' in section.text: # Timeline section
                 continue
-            elif 'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
-                self.clubs[self.home_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[0])
-                self.clubs[self.away_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[1])
-            elif 'Goals' in section.find('h2').text.strip(): # Goals section
+            elif section.find('h2') and'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
+                continue # Checked in first loop
+            elif section.find('h2') and 'Goals' in section.find('h2').text.strip(): # Goals section
                 for event_row in section.find_all('div', {'class': 'sb-aktion'}):
                     goal = Goal(event_row)
                     self.match_events.append(goal)
                     goal.add_to_players(self)
-            elif 'Substitutions' in section.find('h2').text.strip(): # Substitutions section
-                for event_row in section.find_all('div', {'class': 'sb-aktion'}):
-                    substitution = Substitution(event_row)
-                    self.match_events.append(substitution)
-                    substitution.add_to_players(self)
-            elif 'Cards' in section.find('h2').text.strip(): # Bookings section
+            elif section.find('h2') and 'Substitutions' in section.find('h2').text.strip(): # Substitutions section
+                continue # Checked in first loop
+            elif section.find('h2') and 'Cards' in section.find('h2').text.strip(): # Bookings section
                 for event_row in section.find_all('div', {'class': 'sb-aktion'}):
                     booking = Booking(event_row)
                     self.match_events.append(booking)
                     booking.add_to_players(self)
-            elif 'Penalty shoot-out' in section.find('h2').text.strip(): # Shoot-out section
+            elif section.find('h2') and 'Penalty shoot-out' in section.find('h2').text.strip(): # Shoot-out section
                 continue
-            elif 'Special events' in section.find('h2').text.strip(): # Special events section
+            elif section.find('h2') and 'Special events' in section.find('h2').text.strip(): # Special events section
                 continue
-            elif 'missed penalties' in section.find('h2').text.strip(): # Missed Penalties section
+            elif section.find('h2') and 'missed penalties' in section.find('h2').text.strip(): # Missed Penalties section
                 continue
-            elif 'Manager sanctions' in section.find('h2').text.strip(): # Manager sanctions section
+            elif section.find('h2') and 'Manager sanctions' in section.find('h2').text.strip(): # Manager sanctions section
                 continue
-            elif 'Transfers between each other' in section.find('h2').text.strip(): # Transfers between each other section
+            elif section.find('h2') and 'Transfers between each other' in section.find('h2').text.strip(): # Transfers between each other section
                 continue
             else:
-                raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")
+                if section.find('h2'):
+                    raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")
+                else:
+                    raise ValueError(f"Unknown section: {section.text.strip()}") 
         self.match_events.sort()
 
     def __repr__(self):
         return f'Match(id={self.id}, home_club={self.home_club}, away_club={self.away_club}, datetime={self.datetime}, tournament_id={self.tournament_id}, season={self.season})'
+    
+    def get_club_from_player(self, player_name_id):
+        for club in self.clubs.keys():
+            if player_name_id in self.clubs[club].players:
+                return club
+        raise ValueError(f"Player {player_name_id} not found in match {self.id}")
 
 @total_ordering
 class MatchEvent:
@@ -102,9 +116,7 @@ class MatchEvent:
         return self.minute_int == other.minute_int and self.minute_int_ext == other.minute_int_ext
     
     def add_to_players(self, match:Match):
-        for club in match.clubs.keys():
-            if self.main_player in match.clubs[club].players:
-                self.player_club = club
+        self.player_club = match.get_club_from_player(self.main_player)
 
 class Goal(MatchEvent):
     def __init__(self, event_row):
@@ -129,16 +141,17 @@ class Goal(MatchEvent):
         else:
             match.clubs[self.player_club].players[self.goalscorer_name_id].goals.append(self.minute_str)
         if self.assistant_name_id:
-            match.clubs[self.player_club].players[self.assistant_name_id].assists.append(self.minute_str)
+            assistant_club = match.get_club_from_player(self.assistant_name_id)
+            match.clubs[assistant_club].players[self.assistant_name_id].assists.append(self.minute_str)
 
 
 class Substitution(MatchEvent):
     def __init__(self, event_row):
         super().__init__(event_row)
         self.subbed_out_name_id = self.main_player
-        self.subbed_in_name_id = player_anchor_to_name_id(event_row.find('div', {'class': 'sb-aktion-aktion'}).find('div', {'class': {'sb-aktion-spielerbild'}}).find('a'))
-        self.sub_type = event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}).find('span')['title'] if event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}) else None
-    
+        self.subbed_in_name_id = player_anchor_to_name_id(event_row.find('div', {'class': 'sb-aktion-aktion'}).find('div', {'class': {'sb-aktion-spielerbild'}}).find('a')) if event_row.find('div', {'class': 'sb-aktion-aktion'}).find('div', {'class': {'sb-aktion-spielerbild'}}).find('a') else None
+        self.sub_type = event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}).find('span')['title'] if event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}) and event_row.find('div', {'class': 'sb-aktion-spielstand hide-for-small'}).find('span') else None
+
     def __str__(self):
         if self.sub_type:
             return f"{self.minute_str}: Out: {self.subbed_out_name_id} In: {self.subbed_in_name_id} [{self.sub_type}]"
@@ -148,7 +161,10 @@ class Substitution(MatchEvent):
     def add_to_players(self, match:Match):
         super().add_to_players(match)
         match.clubs[self.player_club].players[self.subbed_out_name_id].sub_out = self.minute_str
-        match.clubs[self.player_club].players[self.subbed_in_name_id].sub_in = self.minute_str
+        if self.subbed_in_name_id:
+            if self.subbed_in_name_id not in match.clubs[self.player_club].players.keys():
+                match.clubs[self.player_club].players[self.subbed_in_name_id] = MatchPlayer(self.subbed_in_name_id, 'SUB')
+            match.clubs[self.player_club].players[self.subbed_in_name_id].sub_in = self.minute_str
         
 
 class Booking(MatchEvent):
@@ -184,10 +200,25 @@ class MatchClub:
     def __init__(self, club_div):
         self.players = {}
         self.club_name_id = club_div.find_all('a')[0]['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
-        self.coach_name_id = club_div.find('tr', {'class':'bench-table__tr'}).find('a')['href'][1:].replace('/profil/trainer/','_')
-        for starter in club_div.find_all('div', {'class': 'formation-player-container'}):
-            player_name_id = player_anchor_to_name_id(starter.find('a'))
-            self.players[player_name_id] = MatchPlayer(player_name_id, tm_formation_position_to_position(starter))
+        if club_div.find('tr', {'class':'bench-table__tr'}):
+            if club_div.find('tr', {'class':'bench-table__tr'}).find('a'):
+                self.coach_name_id = club_div.find('tr', {'class':'bench-table__tr'}).find('a')['href'][1:].replace('/profil/trainer/','_')
+            else:
+                self.coach_name_id = None
+            for starter in club_div.find_all('div', {'class': 'formation-player-container'}):
+                player_name_id = player_anchor_to_name_id(starter.find('a'))
+                self.players[player_name_id] = MatchPlayer(player_name_id, tm_formation_position_to_position(starter))
+        else:
+            for item in club_div.find_all('a'):
+                if '/profil/spieler/' in item['href']:
+                    player_name_id = player_anchor_to_name_id(item)
+                    self.players[player_name_id] = MatchPlayer(player_name_id, 'STARTER')
+                elif '/profil/trainer/' in item['href']:
+                    self.coach_name_id = item['href'][1:].replace('/profil/trainer/','_')
+                elif '/startseite/verein/' in item['href']:
+                    self.club_name_id = item['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
+                else:
+                    raise ValueError(f"Unknown anchor href: {item['href']}")
         for sub in club_div.find('table').find_all('tr')[:-1]:
             player_name_id = player_anchor_to_name_id(sub.find('a'))
             self.players[player_name_id] =  MatchPlayer(player_name_id, 'SUB')

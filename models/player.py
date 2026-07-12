@@ -28,7 +28,7 @@ class Player:
         
     def get_all_matches(self):
         from models.interface import get_json_decompressed
-        json_data = get_json_decompressed(f'/player/{self.id}/performance-game')
+        json_data = get_json_decompressed(f'player/{self.id}/performance-game')
         self.all_matches_ids = json_data['data']['gameIds']
         return self.all_matches_ids
 

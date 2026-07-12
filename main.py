@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning, module
 
 # club = Club('fc-sevilla-b-atletico-_8519')
 
-# match = Match('4643228')
+match_test = Match('28094')
 
 # league = League('torneo-final_ARGC')
 # for match_id in league.get_season_matches_ids('2024'):
@@ -22,8 +22,13 @@ warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning, module
 messi = Player('lionel-messi_28003')
 print(messi)
 
-match = Match('3589262')
-print(match)
-for club in match.clubs.values():
-    # club.print_formation()
-    print(club.players.keys())
+messi_players = []
+for match_id in messi.get_all_matches():
+    match = Match(match_id)
+    print(match)
+    for club in match.clubs.values():
+        for player_id in club.players.keys():
+            if player_id not in messi_players:
+                messi_players.append(player_id)
+
+print(f'Players who played with Messi: {len(messi_players)}')

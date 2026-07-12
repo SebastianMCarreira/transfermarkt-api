@@ -1,4 +1,4 @@
-import requests, os, zstandard, json, io
+import requests, os, zstandard, json, io, time
 from models.constants import HOST, CACHE_PATH, HEADERS, VS, IMAGE_HOST, API_HOST
 from models.player import Player
 from models.manager import Manager
@@ -19,8 +19,19 @@ class CachedGet:
             with open(os.path.join(CACHE_PATH, self.file_path), 'rb') as f:
                 self.content = f.read()
         else:
-            self.content = requests.get(url, headers=HEADERS).content
+            success = False
+            sleep = 10
             print('making request: '+url)   
+            while not success:
+                reponse = requests.get(url, headers=HEADERS)
+                self.content = reponse.content
+                if reponse.status_code == 200:
+                    success = True
+                else:
+                    print(f'[Fetch FAIL] {reponse.status_code} {url}')
+                    print(f'Retrying in {sleep} seconds...')
+                    time.sleep(sleep)
+                    sleep *= 2
             with open(os.path.join(CACHE_PATH, self.file_path), 'wb') as f:
                 f.write(self.content)
 
