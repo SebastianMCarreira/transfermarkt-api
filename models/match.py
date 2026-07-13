@@ -16,10 +16,15 @@ class Match:
         self.home_club = bs.find_all('div', {'class':'sb-team'})[0].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
         self.away_club = bs.find_all('div', {'class':'sb-team'})[1].find('a')['href'].split('/saison_id')[0][1:].replace('/startseite/verein/','_')
         self.datetime_str = ', '.join(list(map(lambda x:x.strip(), filter(lambda x: " leg" not in x, bs.find('p', {'class':'sb-datum'}).text.split('|')[1:]))))
-        self.datetime = datetime.strptime(self.datetime_str, "%a, %d/%m/%y, %I:%M %p")
+        try:
+            self.datetime = datetime.strptime(self.datetime_str, "%a, %d/%m/%y, %I:%M %p")
+        except ValueError:
+            self.datetime = datetime.strptime(self.datetime_str, "%a, %d/%m/%y")
         self.datetime = self.datetime.replace(tzinfo=ZoneInfo("Europe/Berlin"))
         self.tournament_id = bs.find('a', {'class':'direct-headline__link'})['href'].split('/')[4]
         self.season = bs.find('a', {'class':'direct-headline__link'})['href'].split('/')[6]
+        if bs.find('div', {'class':'sb-endstand'}).text.strip() == 'postponed': # Skip events for postponed matches
+            return
         for section in bs.find_all('div', {'class': 'box'}): # Do a first pass to ensure all involved players are registered
             if section.find('h2') and'Line-Ups' in section.find('h2').text.strip(): # Line-ups section
                 self.clubs[self.home_club] = MatchClub(section.find_all('div', {'class': 'large-6'})[0])
@@ -60,6 +65,10 @@ class Match:
                 continue
             elif section.find('h2') and 'Transfers between each other' in section.find('h2').text.strip(): # Transfers between each other section
                 continue
+            elif section.find('h2') and 'Facts & figures compare' in section.find('h2').text.strip(): # Facts & figures compare section (seems to only appear in upcoming and postponed matches)
+                continue
+            elif section.find('h2') and 'Last 10 meetings' in section.find('h2').text.strip(): # Last 10 meetings section (seems to only appear in upcoming and postponed matches)
+                continue
             else:
                 if section.find('h2'):
                     raise ValueError(f"Unknown section: {section.find('h2').text.strip()}")
@@ -74,7 +83,7 @@ class Match:
         for club in self.clubs.keys():
             if player_name_id in self.clubs[club].players:
                 return club
-        raise ValueError(f"Player {player_name_id} not found in match {self.id}")
+        return None
 
 @total_ordering
 class MatchEvent:
@@ -189,12 +198,13 @@ class Booking(MatchEvent):
     
     def add_to_players(self, match:Match):
         super().add_to_players(match)
-        if self.card == 'Yellow':
-             match.clubs[self.player_club].players[self.booked_player].yellow_card = self.minute_str
-        elif self.card == 'Red':
-             match.clubs[self.player_club].players[self.booked_player].red_card = self.minute_str
-        elif self.card == 'Second yellow':
-             match.clubs[self.player_club].players[self.booked_player].second_yellow = self.minute_str
+        if self.player_club is not None:
+            if self.card == 'Yellow':
+                match.clubs[self.player_club].players[self.booked_player].yellow_card = self.minute_str
+            elif self.card == 'Red':
+                match.clubs[self.player_club].players[self.booked_player].red_card = self.minute_str
+            elif self.card == 'Second yellow':
+                match.clubs[self.player_club].players[self.booked_player].second_yellow = self.minute_str
 
 class MatchClub:
     def __init__(self, club_div):
@@ -220,6 +230,8 @@ class MatchClub:
                 else:
                     raise ValueError(f"Unknown anchor href: {item['href']}")
         for sub in club_div.find('table').find_all('tr')[:-1]:
+            if not sub.find('a'):
+                continue
             player_name_id = player_anchor_to_name_id(sub.find('a'))
             self.players[player_name_id] =  MatchPlayer(player_name_id, 'SUB')
     

@@ -1,5 +1,5 @@
 from models.constants import HOST, TRANSFER_FLOWS_QUERY_PARAMS, ACADEMIES_JSON
-from models.utils import parse_value, has_academy_suffix
+from models.utils import parse_value, has_academy_suffix, player_anchor_to_name_id
 from bs4 import BeautifulSoup
 
 class Club:
@@ -18,6 +18,7 @@ class Club:
         self.site = facts_box.find('span', {'itemprop':'url'}).text if facts_box.find('span', {'itemprop':'url'}) else None
         related_clubs = bs.find_all('ul', {'class': 'data-header__list-clubs'})[0].find_all('a') if len(bs.find_all('ul', {'class': 'data-header__list-clubs'})) != 0 else []
         senior_club_name_id = None
+        self.players_name_ids = []
         for related_club in related_clubs:
             rel_club_name_id = parse_name_id(related_club['href'])
             if not has_academy_suffix(rel_club_name_id):
@@ -41,6 +42,15 @@ class Club:
             left_side = f'{self.name}'
         right_side = f'Club(\'{self.name_id}\')'.rjust(widith-len(left_side))
         print(f'{left_side}{right_side}')
+
+    def get_current_players(self):
+        bs = BeautifulSoup(self.html, features="html.parser")
+        for anchor in bs.find('table', {'class':'items'}).find_all('a'):
+            if '/profil/spieler/' in anchor['href']:
+                player_name_id = player_anchor_to_name_id(anchor)
+                if not has_academy_suffix(player_name_id):
+                    self.players_name_ids.append(player_name_id)
+        return self.players_name_ids
 
 
 class ClubStaff:

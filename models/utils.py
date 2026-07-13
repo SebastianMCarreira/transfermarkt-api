@@ -97,7 +97,7 @@ def tm_formation_position_to_position(formation_div):
     elif formation_div['style'] in ['top: 10%; left: 65%;', 'top: 18%; left: 65%;']:
         return 'RW'
     else:
-        raise ValueError(f"Unknown position coordinates: {formation_div['style']}")
+        raise ValueError(f"Unknown player '{formation_div.find('a').text.strip()}' in position coordinates: {formation_div['style']}")
 
 def player_anchor_to_name_id(player_anchor):
     return player_anchor['href'][1:].replace('/profil/spieler/','_')
